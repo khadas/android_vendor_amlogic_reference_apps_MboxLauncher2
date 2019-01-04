@@ -1011,8 +1011,12 @@ public class Launcher extends Activity{
         Log.d(TAG, "TV get device_id=" + device_id + " dtv=" + channel_id );
 
         List<TvInputInfo> input_list = mTvInputManager.getTvInputList();
+        String inputid = DroidLogicTvUtils.getCurrentInputId(this);
         for (TvInputInfo info : input_list) {
-            if (parseDeviceId(info.getId()) == device_id) {
+            /*if (parseDeviceId(info.getId()) == device_id) {
+                mTvInputId = info.getId();
+            }*/
+            if (TextUtils.equals(inputid, info.getId())) {
                 mTvInputId = info.getId();
             }
         }
@@ -1081,13 +1085,19 @@ public class Launcher extends Activity{
         }
     }
 
-    private void setChannelUri (long  channelId) {
+    private void setChannelUri (long     channelId) {
         Uri channelUri = TvContract.buildChannelUri(channelId);
         ChannelInfo currentChannel = mTvDataBaseManager.getChannelInfo(channelUri);
         String currentSignalType = DroidLogicTvUtils.getCurrentSignalType(this) == DroidLogicTvUtils.SIGNAL_TYPE_ERROR
             ? TvContract.Channels.TYPE_ATSC_T : DroidLogicTvUtils.getCurrentSignalType(this);
         if (currentChannel != null) {
-            if (DroidLogicTvUtils.isAtscCountry(this)) {
+            if (TvContract.Channels.TYPE_OTHER.equals(currentChannel.getType())) {
+                if (TextUtils.equals(DroidLogicTvUtils.getSearchInputId(this), currentChannel.getInputId())) {
+                    isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
+                    mChannelUri = channelUri;
+                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                }
+            } else if (DroidLogicTvUtils.isAtscCountry(this)) {
                 if (currentChannel.getSignalType().equals(currentSignalType)) {
                     isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
                     mChannelUri = channelUri;
@@ -1109,7 +1119,13 @@ public class Launcher extends Activity{
             if (channelList != null && channelList.size() > 0) {
                 for (int i = 0; i < channelList.size(); i++) {
                     ChannelInfo channel = channelList.get(i);
-                    if (DroidLogicTvUtils.isAtscCountry(this)) {
+                    if (TvContract.Channels.TYPE_OTHER.equals(channel.getType())) {
+                        if (TextUtils.equals(DroidLogicTvUtils.getSearchInputId(this), channel.getInputId())) {
+                            mChannelUri = channel.getUri();
+                            Log.d(TAG, "current other type channel not exisit, find a new channel instead: " + mChannelUri);
+                            return;
+                        }
+                     } else if (DroidLogicTvUtils.isAtscCountry(this)) {
                         if (channel.getSignalType().equals(currentSignalType)) {
                             mChannelUri = channel.getUri();
                             Log.d(TAG, "current channel not exisit, find a new channel instead: " + mChannelUri);
