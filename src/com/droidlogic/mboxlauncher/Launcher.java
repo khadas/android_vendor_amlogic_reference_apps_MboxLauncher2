@@ -322,7 +322,11 @@ public class Launcher extends Activity{
                 if (isTunerSource(deviceId) && currentChannel != null
                         && currentChannel.isLocked() && mTvInputManager.isParentalControlsEnabled()) {
                     isChannelBlocked = true;
+                } else {
+                    isChannelBlocked = false;
                 }
+            } else {
+                isChannelBlocked = false;
             }
 
             tvView.setVisibility(View.VISIBLE);
@@ -965,11 +969,11 @@ public class Launcher extends Activity{
     }
 
     private boolean isCurrentChannelBlocked() {
-        return mSystemControlManager.getPropertyBoolean("tv.current.channel.blocked", false);
+        return mSystemControlManager.getPropertyBoolean(DroidLogicTvUtils.TV_CURRENT_BLOCK_STATUS, false);
     }
 
     public void setCurrentChannelBlocked(boolean blocked){
-        mSystemControlManager.setProperty("tv.current.channel.blocked", blocked ? "true" : "false");
+        mSystemControlManager.setProperty(DroidLogicTvUtils.TV_CURRENT_BLOCK_STATUS, blocked ? "true" : "false");
     }
 
     private boolean isTunerSource (int deviceId) {
