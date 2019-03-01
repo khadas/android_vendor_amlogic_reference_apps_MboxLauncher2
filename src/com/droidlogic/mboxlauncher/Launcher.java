@@ -330,7 +330,7 @@ public class Launcher extends Activity{
             }
 
             tvView.setVisibility(View.VISIBLE);
-            if (!isChannelBlocked) {
+            if (!isChannelBlocked || !isCurrentChannelBlockBlocked()) {
                 mTvHandler.sendEmptyMessage(TV_MSG_PLAY_TV);
             } else {
                 setTvPrompt(TV_PROMPT_BLOCKED);
@@ -972,6 +972,12 @@ public class Launcher extends Activity{
         return mSystemControlManager.getPropertyBoolean(DroidLogicTvUtils.TV_CURRENT_BLOCK_STATUS, false);
     }
 
+    private boolean isCurrentChannelBlockBlocked() {
+        String value = mSystemControlManager.getProperty(DroidLogicTvUtils.TV_CURRENT_CHANNELBLOCK_STATUS);
+        boolean status = mSystemControlManager.getPropertyBoolean(DroidLogicTvUtils.TV_CURRENT_CHANNELBLOCK_STATUS, false);
+        return status && !TextUtils.isEmpty(value);
+    }
+
     public void setCurrentChannelBlocked(boolean blocked){
         mSystemControlManager.setProperty(DroidLogicTvUtils.TV_CURRENT_BLOCK_STATUS, blocked ? "true" : "false");
     }
@@ -1037,8 +1043,8 @@ public class Launcher extends Activity{
 
         if (mChannelUri != null && !TvContract.isChannelUriForPassthroughInput(mChannelUri)) {
             ChannelInfo current = mTvDataBaseManager.getChannelInfo(mChannelUri);
-            if (current != null && (!mTvInputManager.isParentalControlsEnabled() ||
-                        (mTvInputManager.isParentalControlsEnabled() && !current.isLocked()))) {
+            if (current != null/* && (!mTvInputManager.isParentalControlsEnabled() ||
+                        (mTvInputManager.isParentalControlsEnabled() && !current.isLocked()))*/) {
                 if (isCurrentChannelBlocked()) {
                     Log.d(TAG, "current channel is blocked");
                     setTvPrompt(TV_PROMPT_BLOCKED);
