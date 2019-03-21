@@ -963,9 +963,10 @@ public class Launcher extends Activity{
     private boolean isBootvideoStopped() {
         ContentProviderClient tvProvider = getContentResolver().acquireContentProviderClient(TvContract.AUTHORITY);
 
-        return TextUtils.equals(SystemProperties.get("init.svc.bootanim", "running"), "stopped")
-                && TextUtils.equals(SystemProperties.get("dev.bootcomplete", "0"), "1")
-                && (tvProvider != null);
+        return (tvProvider != null) &&
+                (((SystemProperties.getInt("persist.vendor.media.bootvideo", 50)  > 100)
+                        && TextUtils.equals(SystemProperties.get("dev.bootcomplete", "0"), "1"))
+                || ((SystemProperties.getInt("persist.vendor.media.bootvideo", 50)  <= 100)));
     }
 
     private boolean isCurrentChannelBlocked() {
@@ -1214,8 +1215,8 @@ public class Launcher extends Activity{
                         Log.d(TAG, "======== bootvideo is stopped, and tvapp released, start tv play");
                         tuneTvView();
                     } else {
-                        Log.d(TAG, "======== bootvideo is not stopped, or tvapp not released, wait it");
-                        mTvHandler.sendEmptyMessageDelayed(TV_MSG_PLAY_TV, 200);
+                        //Log.d(TAG, "======== bootvideo is not stopped, or tvapp not released, wait it");
+                        mTvHandler.sendEmptyMessageDelayed(TV_MSG_PLAY_TV, 10);
                     }
                     break;
                 case TV_MSG_BOOTUP_TO_TVAPP:
