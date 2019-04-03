@@ -965,7 +965,7 @@ public class Launcher extends Activity{
 
         return (tvProvider != null) &&
                 (((SystemProperties.getInt("persist.vendor.media.bootvideo", 50)  > 100)
-                        && TextUtils.equals(SystemProperties.get("dev.bootcomplete", "0"), "1"))
+                        && TextUtils.equals(SystemProperties.get("service.bootvideo.exit", "1"), "0"))
                 || ((SystemProperties.getInt("persist.vendor.media.bootvideo", 50)  <= 100)));
     }
 
