@@ -1202,7 +1202,7 @@ public class Launcher extends Activity{
     //stop the background music player
     public void stopMusicPlayer() {
         Intent intent = new Intent();
-        intent.setAction ("com.android.music.musicservicecommand.pause");
+        intent.setAction ("com.android.music.pause");
         intent.putExtra ("command", "stop");
         sendBroadcast (intent);
     }
