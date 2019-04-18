@@ -1344,22 +1344,14 @@ public class Launcher extends Activity{
     private final class TvInputChangeCallback extends TvInputManager.TvInputCallback {
         @Override
         public void onInputAdded(String inputId) {
-            Log.d(TAG, "==== onInputAdded, inputId=" + inputId + " curent inputid=" + mTvInputId);
-            int device_id = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
-            if (device_id == parseDeviceId(inputId)) {
-                switch (device_id) {
-                    case DroidLogicTvUtils.DEVICE_ID_AV1:
-                    case DroidLogicTvUtils.DEVICE_ID_AV2:
-                    case DroidLogicTvUtils.DEVICE_ID_HDMI1:
-                    case DroidLogicTvUtils.DEVICE_ID_HDMI2:
-                    case DroidLogicTvUtils.DEVICE_ID_HDMI3:
-                    case DroidLogicTvUtils.DEVICE_ID_HDMI4:
-                        //tvView.reset();
-                        setTvPrompt(TV_PROMPT_GOT_SIGNAL);
-                        mTvInputId = inputId;
-                        mChannelUri = TvContract.buildChannelUriForPassthroughInput(mTvInputId);
-                        tvView.tune(mTvInputId, mChannelUri);
-                        break;
+            String current_inputid = DroidLogicTvUtils.getCurrentInputId(getApplicationContext());
+            Log.d(TAG, "==== onInputAdded, inputId=" + inputId + " curent inputid=" + current_inputid + "curent mChannelUri" + mChannelUri);
+            if (inputId.equals(current_inputid)) {
+                if (!mTvInputManager.getTvInputInfo(inputId).isPassthroughInput()) {
+                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                    mTvInputId = inputId;
+                    setChannelUri(Settings.System.getLong(getContentResolver(), DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1));
+                    tvView.tune(mTvInputId, mChannelUri);
                 }
             }
         }
