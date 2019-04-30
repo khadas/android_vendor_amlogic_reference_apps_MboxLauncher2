@@ -372,6 +372,8 @@ public class Launcher extends Activity{
 
     @Override
     protected void onDestroy(){
+        Log.d(TAG, "------onDestroy");
+        releasePlayingTv();
         unregisterReceiver(mediaReceiver);
         unregisterReceiver(netReceiver);
         unregisterReceiver(appReceiver);
@@ -1073,6 +1075,7 @@ public class Launcher extends Activity{
     }
 
     private void releaseTvView() {
+        Log.d(TAG, "releaseTvView:" + mChannelUri);
         tvView.setVisibility(View.GONE);
         tvView.reset();
 
