@@ -1349,11 +1349,14 @@ public class Launcher extends Activity{
         public void onInputAdded(String inputId) {
             String current_inputid = DroidLogicTvUtils.getCurrentInputId(getApplicationContext());
             Log.d(TAG, "==== onInputAdded, inputId=" + inputId + " curent inputid=" + current_inputid + "curent mChannelUri" + mChannelUri);
-            if (inputId.equals(current_inputid)) {
+            if (inputId.equals(current_inputid) || mTvInputId == null) {
+                setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                mTvInputId = inputId;
                 if (!mTvInputManager.getTvInputInfo(inputId).isPassthroughInput()) {
-                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
-                    mTvInputId = inputId;
                     setChannelUri(Settings.System.getLong(getContentResolver(), DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1));
+                    tvView.tune(mTvInputId, mChannelUri);
+                } else {
+                    mChannelUri = TvContract.buildChannelUriForPassthroughInput(mTvInputId);
                     tvView.tune(mTvInputId, mChannelUri);
                 }
             }
