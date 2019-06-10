@@ -1040,7 +1040,7 @@ public class Launcher extends Activity{
         }
 
         Log.d(TAG, "TV play tune inputId=" + mTvInputId + " uri=" + mChannelUri);
-        if (mChannelUri != null) {
+        if (mChannelUri != null && (DroidLogicTvUtils.getChannelId(mChannelUri) > 0)) {
             tvView.tune(mTvInputId, mChannelUri);
         }
 
