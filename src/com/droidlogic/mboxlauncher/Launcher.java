@@ -373,7 +373,9 @@ public class Launcher extends Activity{
     @Override
     protected void onDestroy(){
         Log.d(TAG, "------onDestroy");
-        releasePlayingTv();
+        if (needPreviewFeture()) {
+            releasePlayingTv();
+        }
         unregisterReceiver(mediaReceiver);
         unregisterReceiver(netReceiver);
         unregisterReceiver(appReceiver);
