@@ -1017,12 +1017,15 @@ public class Launcher extends Activity{
 
         List<TvInputInfo> input_list = mTvInputManager.getTvInputList();
         String inputid = DroidLogicTvUtils.getCurrentInputId(this);
+        TvInputInfo currentInfo = null;
         for (TvInputInfo info : input_list) {
             /*if (parseDeviceId(info.getId()) == device_id) {
                 mTvInputId = info.getId();
             }*/
             if (TextUtils.equals(inputid, info.getId())) {
                 mTvInputId = info.getId();
+                currentInfo = info;
+                break;
             }
         }
 
@@ -1042,7 +1045,8 @@ public class Launcher extends Activity{
         }
 
         Log.d(TAG, "TV play tune inputId=" + mTvInputId + " uri=" + mChannelUri);
-        if (mChannelUri != null && (DroidLogicTvUtils.getChannelId(mChannelUri) > 0)) {
+        if (mChannelUri != null && (DroidLogicTvUtils.getChannelId(mChannelUri) > 0
+                || (currentInfo != null && currentInfo.isPassthroughInput()))) {
             tvView.tune(mTvInputId, mChannelUri);
         }
 
