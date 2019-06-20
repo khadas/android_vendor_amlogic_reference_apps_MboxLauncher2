@@ -86,6 +86,7 @@ public class Launcher extends Activity{
     public static final String PROP_TV_PREVIEW = "tv.is.preview.window";
     public static final String COMPONENT_THOMASROOM = "com.android.gl2jni";
     public static final String COMPONENT_TVSETTINGS = "com.android.tv.settings/com.android.tv.settings.MainSettings";
+    public static final String DTVKIT_PACKAGE = "org.dtvkit.inputsource";
     public static boolean isLaunchingTvSettings = false;
     public static boolean isLaunchingThomasroom = false;
 
@@ -157,6 +158,8 @@ public class Launcher extends Activity{
     private static final int TV_PROMPT_SPDIF                   = 4;
     private static final int TV_PROMPT_BLOCKED                 = 5;
     private static final int TV_PROMPT_NO_CHANNEL              = 6;
+    private static final int TV_PROMPT_RADIO                   = 7;
+    private static final int TV_PROMPT_TUNING                  = 8;
     private static final int TV_WINDOW_WIDTH                   = 310;
     private static final int TV_WINDOW_HEIGHT                  = 174;
     private static final int TV_WINDOW_NORMAL_LEFT             = 120;
@@ -704,7 +707,7 @@ public class Launcher extends Activity{
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
-            //Log.d(TAG, " mediaReceiver		  action = " + action);
+            //Log.d(TAG, " mediaReceiver          action = " + action);
             if (action == null)
                 return;
 
@@ -1006,7 +1009,7 @@ public class Launcher extends Activity{
             Log.d(TAG, "registerCallback:" + mTvInputChangeCallback);
             mTvInputManager.registerCallback(mTvInputChangeCallback, new Handler());
         }
-        setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+        setTvPrompt(TV_PROMPT_TUNING/*TV_PROMPT_GOT_SIGNAL*/);
 
         int device_id;
         long channel_id;
@@ -1054,10 +1057,11 @@ public class Launcher extends Activity{
             ChannelInfo current = mTvDataBaseManager.getChannelInfo(mChannelUri);
             if (current != null/* && (!mTvInputManager.isParentalControlsEnabled() ||
                         (mTvInputManager.isParentalControlsEnabled() && !current.isLocked()))*/) {
-                if (isCurrentChannelBlocked()) {
+                if (isCurrentChannelBlocked() && !current.getInputId().startsWith(DTVKIT_PACKAGE)) {
                     Log.d(TAG, "current channel is blocked");
                     setTvPrompt(TV_PROMPT_BLOCKED);
                 } else {
+                    setTvPrompt(TV_PROMPT_TUNING);
                     Log.d(TAG, "TV play tune continue as no channel blocks");
                 }
             } else {
@@ -1205,6 +1209,14 @@ public class Launcher extends Activity{
                 tvPrompt.setText(getResources().getString(R.string.str_no_channel));
                 tvPrompt.setBackground(getResources().getDrawable(R.drawable.black));
                 break;
+            case TV_PROMPT_RADIO:
+                tvPrompt.setText(getResources().getString(R.string.str_audio_only));
+                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.bg_radio));
+                break;
+            case TV_PROMPT_TUNING:
+                tvPrompt.setText(null);
+                tvPrompt.setBackground(getResources().getDrawable(R.drawable.black));
+                break;
         }
     }
 
@@ -1307,6 +1319,10 @@ public class Launcher extends Activity{
             } else if (reason != TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY) {
                 if (!TextUtils.equals(mChannelUri.toString(), TvContract.buildChannelUri(-1).toString())) {
                     setTvPrompt(TV_PROMPT_NO_SIGNAL);
+                }
+            } else if (reason == TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY) {
+                if (inputId != null && inputId.startsWith(DTVKIT_PACKAGE)) {
+                    setTvPrompt(TV_PROMPT_RADIO);
                 }
             }
         }
