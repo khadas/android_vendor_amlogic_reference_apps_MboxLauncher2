@@ -1378,7 +1378,7 @@ public class Launcher extends Activity{
             if (inputId.equals(current_inputid) || mTvInputId == null) {
                 mTvInputId = inputId;
                 if (!mTvInputManager.getTvInputInfo(inputId).isPassthroughInput()) {
-                    if (!!mTvStartPlaying) {
+                    if (!mTvStartPlaying) {
                         tuneTvView();
                     }
                     /*setChannelUri(Settings.System.getLong(getContentResolver(), DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1));
