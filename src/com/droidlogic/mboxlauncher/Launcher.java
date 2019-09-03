@@ -333,6 +333,12 @@ public class Launcher extends Activity{
             }
 
             tvView.setVisibility(View.VISIBLE);
+
+            // if pressing Home key in Launcher screen, don't re-tune TV source.
+            if (mTvStartPlaying) {
+                return;
+            }
+
             if (!isChannelBlocked || !isCurrentChannelBlockBlocked()) {
                 mTvHandler.sendEmptyMessage(TV_MSG_PLAY_TV);
             } else {
@@ -351,8 +357,6 @@ public class Launcher extends Activity{
         Log.d(TAG, "------onPause");
 
         if (needPreviewFeture()) {
-            mSystemControlManager.writeSysFs("/sys/module/tvin_hdmirx/parameters/en_4k_2_2k", "0");
-
             //if launch Thomas' Room, we should call onStop() to release TvView.
             if (isLaunchingThomasroom || isLaunchingTvSettings
                     || mSecondScreen.getVisibility() == View.VISIBLE) {
@@ -1046,7 +1050,6 @@ public class Launcher extends Activity{
             if (isTunerSource(device_id)) {
                 setChannelUri(channel_id);
             } else {
-                mSystemControlManager.writeSysFs("/sys/module/tvin_hdmirx/parameters/en_4k_2_2k", "1");
                 mChannelUri = TvContract.buildChannelUriForPassthroughInput(mTvInputId);
             }
         }
