@@ -170,6 +170,8 @@ public class Launcher extends Activity{
     private static final int TV_MSG_PLAY_TV                    = 0;
     private static final int TV_MSG_BOOTUP_TO_TVAPP                = 1;
 
+    private static final int INPUT_ID_LENGTH = 3;
+
     public int tvViewMode = -1;
     private int mTvTop = -1;
     private boolean isRadioChannel = false;
@@ -1033,7 +1035,7 @@ public class Launcher extends Activity{
             /*if (parseDeviceId(info.getId()) == device_id) {
                 mTvInputId = info.getId();
             }*/
-            if (TextUtils.equals(inputid, info.getId())) {
+            if (compareInputId(inputid, info)) {
                 mTvInputId = info.getId();
                 currentInfo = info;
                 break;
@@ -1089,6 +1091,33 @@ public class Launcher extends Activity{
             mChannelObserver = new ChannelObserver();
         getContentResolver().registerContentObserver(Channels.CONTENT_URI, true, mChannelObserver);
         mTvStartPlaying = true;
+    }
+
+    private boolean compareInputId(String inputId, TvInputInfo info) {
+        Log.d(TAG, "compareInputId currentInputId " + inputId + " info " + info);
+        if (null == info) {
+            Log.d(TAG, "compareInputId info null");
+            return false;
+        }
+        String infoInputId = info.getId();
+        if (TextUtils.isEmpty(inputId) || TextUtils.isEmpty(infoInputId)) {
+            Log.d(TAG, "inputId empty");
+            return false;
+        }
+        if (TextUtils.equals(inputId, infoInputId)) {
+            return true;
+        }
+
+        String[] inputIdArr = inputId.split("/");
+        String[] infoInputIdArr = infoInputId.split("/");
+        // InputId is like com.droidlogic.tvinput/.services.Hdmi1InputService/HW5
+        if (inputIdArr.length == INPUT_ID_LENGTH && infoInputIdArr.length == INPUT_ID_LENGTH) {
+            // For hdmi device inputId could change to com.droidlogic.tvinput/.services.Hdmi2InputService/HDMI200008
+            if (inputIdArr[0].equals(infoInputIdArr[0]) && inputIdArr[1].equals(infoInputIdArr[1])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void releaseTvView() {
