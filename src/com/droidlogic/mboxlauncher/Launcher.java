@@ -89,6 +89,7 @@ public class Launcher extends Activity{
     public static final String DTVKIT_PACKAGE = "org.dtvkit.inputsource";
     public static boolean isLaunchingTvSettings = false;
     public static boolean isLaunchingThomasroom = false;
+    public static final String PROP_TV_PREVIEW_STATUS = "tv.is.preview.window.playing";
 
     public static final int TYPE_VIDEO                           = 0;
     public static final int TYPE_RECOMMEND                       = 1;
@@ -284,6 +285,7 @@ public class Launcher extends Activity{
         recycleBigBackgroundDrawable();
         mTvHandler.removeMessages(TV_MSG_PLAY_TV);
         releaseTvView();
+        mSystemControlManager.setProperty(PROP_TV_PREVIEW_STATUS, "false");
         mTvStartPlaying = false;
     }
 
@@ -841,6 +843,7 @@ public class Launcher extends Activity{
 
     private boolean checkNeedStartTvApp(boolean close) {
         boolean ret = false;
+        mSystemControlManager.setProperty(PROP_TV_PREVIEW_STATUS, "false");
         if (TextUtils.equals(mSystemControlManager.getProperty("ro.vendor.platform.has.tvuimode"), "true") &&
             !TextUtils.equals(mSystemControlManager.getProperty("tv.launcher.firsttime.launch"), "false") &&
             Settings.System.getInt(getContentResolver(), "tv_start_up_enter_app", 0) > 0) {
@@ -1090,6 +1093,7 @@ public class Launcher extends Activity{
         if (mChannelObserver == null)
             mChannelObserver = new ChannelObserver();
         getContentResolver().registerContentObserver(Channels.CONTENT_URI, true, mChannelObserver);
+        mSystemControlManager.setProperty(PROP_TV_PREVIEW_STATUS, "true");
         mTvStartPlaying = true;
     }
 
