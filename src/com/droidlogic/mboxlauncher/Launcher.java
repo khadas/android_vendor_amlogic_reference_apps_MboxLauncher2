@@ -800,7 +800,6 @@ public class Launcher extends Activity{
                     }
                     try {
                         startActivity(data);
-                        finish();
                     } catch (ActivityNotFoundException e) {
                         Log.e(TAG, " can't start LiveTv:" + e);
                     }
