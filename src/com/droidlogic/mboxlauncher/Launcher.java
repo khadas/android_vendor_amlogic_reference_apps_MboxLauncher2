@@ -200,6 +200,7 @@ public class Launcher extends Activity{
 
     private static final int REQUEST_CODE_START_TV_SOURCE = 3;
     private boolean mTvStartPlaying = false;
+    private boolean resumeFromTVSource = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -300,6 +301,11 @@ public class Launcher extends Activity{
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "------onResume");
+        if (resumeFromTVSource) {
+            //launcher will start tvapp, don't do anything
+            resumeFromTVSource = false;
+            return;
+        }
 
         if (checkNeedStartTvApp(true)) {
             mTvHandler.sendEmptyMessage(TV_MSG_BOOTUP_TO_TVAPP);
@@ -795,6 +801,7 @@ public class Launcher extends Activity{
         switch (requestCode) {
             case REQUEST_CODE_START_TV_SOURCE:
                 if (resultCode == RESULT_OK && data != null) {
+                    resumeFromTVSource = true;
                     if (mTvStartPlaying) {
                         releasePlayingTv();
                     }
