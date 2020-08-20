@@ -823,16 +823,16 @@ public class Launcher extends Activity{
             return true;
         }
 
-        String state = TvControlDataManager.getString(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE);
+        int state = TvControlDataManager.getInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.STATE_FREE);
         int count =  TvControlDataManager.getInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_COUNT, 0);
-        if (TextUtils.equals(state, DroidLogicTvUtils.SWITCHING_HOME)) {
-            if (count == 0) {;
-                TvControlDataManager.putString(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.SWITCHING_TVAPP);
+        if (state == DroidLogicTvUtils.STATE_SWITCHING_HOME) {
+            if (count == 0) {
+                TvControlDataManager.putInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.STATE_SWITCHING_TVAPP);
             } else {;
                 return false;
             }
         } else {
-            TvControlDataManager.putString(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.SWITCHING_TVAPP);
+            TvControlDataManager.putInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.STATE_SWITCHING_TVAPP);
         }
 
         return true;
