@@ -80,6 +80,7 @@ public class Launcher extends Activity{
     private final String DROIDVOLD_MEDIA_UNMOUNTED_ACTION = "com.droidvold.action.MEDIA_UNMOUNTED";
     private final String DROIDVOLD_MEDIA_EJECT_ACTION = "com.droidvold.action.MEDIA_EJECT";
     private final String DROIDVOLD_MEDIA_MOUNTED_ACTION = "com.droidvold.action.MEDIA_MOUNTED";
+    private static final String ACTION_OTP_INPUT_SOURCE_CHANGE = "droidlogic.tv.action.OTP_INPUT_SOURCE_CHANGED";
 
     public static String COMPONENT_TV_SOURCE = "com.droidlogic.tv.settings/com.droidlogic.tv.settings.TvSourceActivity";
     public static String COMPONENT_TV_APP = "com.droidlogic.tvsource/com.droidlogic.tvsource.DroidLogicTv";
@@ -201,6 +202,7 @@ public class Launcher extends Activity{
     private static final int REQUEST_CODE_START_TV_SOURCE = 3;
     private boolean mTvStartPlaying = false;
     private boolean resumeFromTVSource = false;
+    private boolean mActivityResumed;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -239,36 +241,6 @@ public class Launcher extends Activity{
 
         mAppDataLoader.update();
         initChildViews();
-
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_MEDIA_EJECT);
-        filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
-        filter.addAction(Intent.ACTION_MEDIA_MOUNTED);
-        filter.addAction (DROIDVOLD_MEDIA_UNMOUNTED_ACTION);
-        filter.addAction (DROIDVOLD_MEDIA_MOUNTED_ACTION);
-        filter.addAction (DROIDVOLD_MEDIA_EJECT_ACTION);
-        filter.addDataScheme("file");
-        registerReceiver(mediaReceiver, filter);
-
-        filter = new IntentFilter();
-        filter.addAction(net_change_action);
-        filter.addAction(wifi_signal_action);
-        filter.addAction(Intent.ACTION_TIME_TICK);
-        filter.addAction(Intent.ACTION_TIME_CHANGED);
-        filter.addAction(outputmode_change_action);
-        filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE);
-        filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE);
-        registerReceiver(netReceiver, filter);
-
-        filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
-        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
-        filter.addAction(Intent.ACTION_PACKAGE_CHANGED);
-        filter.addDataScheme("package");
-        registerReceiver(appReceiver, filter);
-
-        filter = new IntentFilter();
-        filter.addAction("com.droidlogic.instaboot.RELOAD_APP_COMPLETED");
-        registerReceiver(instabootReceiver, filter);
     }
 
     public boolean isMboxFeture () {
@@ -301,6 +273,8 @@ public class Launcher extends Activity{
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "------onResume");
+
+        mActivityResumed = true;
         if (resumeFromTVSource) {
             //launcher will start tvapp, don't do anything
             resumeFromTVSource = false;
@@ -327,6 +301,7 @@ public class Launcher extends Activity{
         displayShortcuts();
         displayStatus();
         displayDate();
+        registerBroadcasts();
 
         if (needPreviewFeture()) {
             //need to init channel when tv provider is ready
@@ -344,6 +319,7 @@ public class Launcher extends Activity{
     @Override
     protected void onPause() {
         super.onPause();
+        mActivityResumed = false;
         mHandler.removeMessages(MSG_START_CUSTOM_SCREEN);
         Log.d(TAG, "------onPause");
 
@@ -366,18 +342,12 @@ public class Launcher extends Activity{
         if (needPreviewFeture() && mTvStartPlaying) {
             releasePlayingTv();
         }
+        unregisterBroadcasts();
     }
 
     @Override
     protected void onDestroy(){
         Log.d(TAG, "------onDestroy");
-        if (needPreviewFeture()) {
-            releasePlayingTv();
-        }
-        unregisterReceiver(mediaReceiver);
-        unregisterReceiver(netReceiver);
-        unregisterReceiver(appReceiver);
-        unregisterReceiver(instabootReceiver);
         super.onDestroy();
     }
 
@@ -762,17 +732,63 @@ public class Launcher extends Activity{
         }
     };
 
-    private BroadcastReceiver instabootReceiver = new BroadcastReceiver(){
+    private BroadcastReceiver otherReceiver = new BroadcastReceiver(){
         @Override
         public void onReceive(Context context, Intent intent) {
 
             final String action = intent.getAction();
-            if ("com.droidlogic.instaboot.RELOAD_APP_COMPLETED".equals(action)) {
-                Log.e(TAG,"reloadappcompleted");
-                displayShortcuts();
+            if (ACTION_OTP_INPUT_SOURCE_CHANGE.equals(action)) {
+                Log.d(TAG," receive " + ACTION_OTP_INPUT_SOURCE_CHANGE);
+                if (mActivityResumed && isBootvideoStopped()) {
+                    Intent i = new Intent(TvInputManager.ACTION_SETUP_INPUTS);
+                    i.putExtra("from_cec_otp", true);
+                    i.putExtra(TvInputInfo.EXTRA_INPUT_ID, intent.getStringExtra(TvInputInfo.EXTRA_INPUT_ID));
+                    startOtpSource(i);
+                } else {
+                    Log.d(TAG," acitivity not resumed or bootvideo not finished, drop " + ACTION_OTP_INPUT_SOURCE_CHANGE);
+                }
             }
         }
     };
+
+    private void registerBroadcasts() {
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_MEDIA_EJECT);
+        filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+        filter.addAction(Intent.ACTION_MEDIA_MOUNTED);
+        filter.addAction (DROIDVOLD_MEDIA_UNMOUNTED_ACTION);
+        filter.addAction (DROIDVOLD_MEDIA_MOUNTED_ACTION);
+        filter.addAction (DROIDVOLD_MEDIA_EJECT_ACTION);
+        filter.addDataScheme("file");
+        registerReceiver(mediaReceiver, filter);
+
+        filter = new IntentFilter();
+        filter.addAction(net_change_action);
+        filter.addAction(wifi_signal_action);
+        filter.addAction(Intent.ACTION_TIME_TICK);
+        filter.addAction(Intent.ACTION_TIME_CHANGED);
+        filter.addAction(outputmode_change_action);
+        filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE);
+        filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE);
+        registerReceiver(netReceiver, filter);
+
+        filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
+        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        filter.addAction(Intent.ACTION_PACKAGE_CHANGED);
+        filter.addDataScheme("package");
+        registerReceiver(appReceiver, filter);
+
+        filter = new IntentFilter();
+        filter.addAction(ACTION_OTP_INPUT_SOURCE_CHANGE);
+        registerReceiver(otherReceiver, filter);
+    }
+
+    private void unregisterBroadcasts() {
+        unregisterReceiver(mediaReceiver);
+        unregisterReceiver(netReceiver);
+        unregisterReceiver(appReceiver);
+        unregisterReceiver(otherReceiver);
+    }
 
     public void startTvSettings() {
         try {
@@ -792,6 +808,17 @@ public class Launcher extends Activity{
             startActivityForResult(intent, REQUEST_CODE_START_TV_SOURCE);
         } catch (ActivityNotFoundException e) {
             Log.e(TAG, " can't start TvSources:" + e);
+        }
+    }
+
+    private void startOtpSource(Intent intent) {
+        if (mTvStartPlaying) {
+            releasePlayingTv();
+        }
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException e) {
+            Log.e(TAG, " can't start LiveTv:" + e);
         }
     }
 
@@ -1012,9 +1039,11 @@ public class Launcher extends Activity{
     }
 
     private boolean isTunerSource (int deviceId) {
-        return deviceId == DroidLogicTvUtils.DEVICE_ID_ATV
-                || deviceId == DroidLogicTvUtils.DEVICE_ID_DTV
-                || deviceId == DroidLogicTvUtils.DEVICE_ID_ADTV;
+        return deviceId == DroidLogicTvUtils.DEVICE_ID_ADTV;
+    }
+
+    private boolean isTunerSource (String inputId) {
+        return !TextUtils.isEmpty(inputId) && inputId.contains("ADTV");
     }
 
     private void tuneTvView() {
@@ -1060,7 +1089,7 @@ public class Launcher extends Activity{
             //mTvInputId = DEFAULT_INPUT_ID;
             //mChannelUri = TvContract.buildChannelUri(-1);
         } else {
-            if (isTunerSource(device_id)) {
+            if (isTunerSource(mTvInputId)) {
                 setChannelUri(channel_id);
             } else {
                 mChannelUri = TvContract.buildChannelUriForPassthroughInput(mTvInputId);
