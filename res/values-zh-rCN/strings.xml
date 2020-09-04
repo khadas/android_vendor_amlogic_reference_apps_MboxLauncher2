@@ -27,4 +27,5 @@
     <string name="str_no_channel">无频道</string>
     <string name="str_scrambeled">频道加密</string>
     <string name="str_blocked">频道加锁</string>
+    <string name="toast_otp_input_change">电视收到请求并切换通道</string>
 </resources>

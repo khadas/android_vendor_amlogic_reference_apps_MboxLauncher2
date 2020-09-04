@@ -740,6 +740,8 @@ public class Launcher extends Activity{
             if (ACTION_OTP_INPUT_SOURCE_CHANGE.equals(action)) {
                 Log.d(TAG," receive " + ACTION_OTP_INPUT_SOURCE_CHANGE);
                 if (mActivityResumed && isBootvideoStopped()) {
+                    Toast.makeText(Launcher.this, R.string.toast_otp_input_change, Toast.LENGTH_LONG).show();
+
                     Intent i = new Intent(TvInputManager.ACTION_SETUP_INPUTS);
                     i.putExtra("from_cec_otp", true);
                     i.putExtra(TvInputInfo.EXTRA_INPUT_ID, intent.getStringExtra(TvInputInfo.EXTRA_INPUT_ID));
@@ -1054,11 +1056,13 @@ public class Launcher extends Activity{
 
         mTvInputId = null;
         mChannelUri = null;
+        /* Launcher should not update current input without user's select or notification from cec.
         if (mTvInputChangeCallback == null) {
             mTvInputChangeCallback = new TvInputChangeCallback();
             Log.d(TAG, "registerCallback:" + mTvInputChangeCallback);
             mTvInputManager.registerCallback(mTvInputChangeCallback, new Handler());
         }
+        */
         setTvPrompt(TV_PROMPT_TUNING/*TV_PROMPT_GOT_SIGNAL*/);
 
         int device_id;
@@ -1168,12 +1172,13 @@ public class Launcher extends Activity{
         if (mTvHandler.hasMessages(TV_MSG_PLAY_TV)) {
             mTvHandler.removeMessages(TV_MSG_PLAY_TV);
         }
-
+        /*
         if (mTvInputChangeCallback != null) {
             Log.d(TAG, "unregisterCallback:" + mTvInputChangeCallback);
             mTvInputManager.unregisterCallback(mTvInputChangeCallback);
             mTvInputChangeCallback = null;
         }
+        */
         if (mChannelObserver != null) {
             getContentResolver().unregisterContentObserver(mChannelObserver);
             mChannelObserver = null;
