@@ -732,22 +732,31 @@ public class Launcher extends Activity{
         }
     };
 
+    private boolean mBootComplete;
+    private Intent mDelayedSourceChange;
     private BroadcastReceiver otherReceiver = new BroadcastReceiver(){
         @Override
         public void onReceive(Context context, Intent intent) {
 
             final String action = intent.getAction();
+            Log.d(TAG," receive " + action);
             if (ACTION_OTP_INPUT_SOURCE_CHANGE.equals(action)) {
-                Log.d(TAG," receive " + ACTION_OTP_INPUT_SOURCE_CHANGE);
-                if (mActivityResumed && isBootvideoStopped()) {
+                Intent i = new Intent(TvInputManager.ACTION_SETUP_INPUTS);
+                i.putExtra("from_cec_otp", true);
+                i.putExtra(TvInputInfo.EXTRA_INPUT_ID, intent.getStringExtra(TvInputInfo.EXTRA_INPUT_ID));
+                if (!mBootComplete) {
+                    mDelayedSourceChange = i;
+                } else if (mActivityResumed && isBootvideoStopped()) {
                     Toast.makeText(Launcher.this, R.string.toast_otp_input_change, Toast.LENGTH_LONG).show();
-
-                    Intent i = new Intent(TvInputManager.ACTION_SETUP_INPUTS);
-                    i.putExtra("from_cec_otp", true);
-                    i.putExtra(TvInputInfo.EXTRA_INPUT_ID, intent.getStringExtra(TvInputInfo.EXTRA_INPUT_ID));
                     startOtpSource(i);
                 } else {
                     Log.d(TAG," acitivity not resumed or bootvideo not finished, drop " + ACTION_OTP_INPUT_SOURCE_CHANGE);
+                }
+            } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+                mBootComplete = true;
+                if (mDelayedSourceChange != null) {
+                    startOtpSource(mDelayedSourceChange);
+                    mDelayedSourceChange = null;
                 }
             }
         }
@@ -782,6 +791,7 @@ public class Launcher extends Activity{
 
         filter = new IntentFilter();
         filter.addAction(ACTION_OTP_INPUT_SOURCE_CHANGE);
+        filter.addAction(Intent.ACTION_BOOT_COMPLETED);
         registerReceiver(otherReceiver, filter);
     }
 
@@ -814,6 +824,7 @@ public class Launcher extends Activity{
     }
 
     private void startOtpSource(Intent intent) {
+        Log.d(TAG, "startOtpSource");
         if (mTvStartPlaying) {
             releasePlayingTv();
         }
