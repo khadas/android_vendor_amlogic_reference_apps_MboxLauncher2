@@ -762,6 +762,7 @@ public class Launcher extends Activity{
         }
     };
 
+    private boolean mBroadcastsRegistered = false;
     private void registerBroadcasts() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_MEDIA_EJECT);
@@ -793,13 +794,19 @@ public class Launcher extends Activity{
         filter.addAction(ACTION_OTP_INPUT_SOURCE_CHANGE);
         filter.addAction(Intent.ACTION_BOOT_COMPLETED);
         registerReceiver(otherReceiver, filter);
+
+        mBroadcastsRegistered = true;
     }
 
     private void unregisterBroadcasts() {
+        if (!mBroadcastsRegistered) {
+            return;
+        }
         unregisterReceiver(mediaReceiver);
         unregisterReceiver(netReceiver);
         unregisterReceiver(appReceiver);
         unregisterReceiver(otherReceiver);
+        mBroadcastsRegistered = false;
     }
 
     public void startTvSettings() {
