@@ -732,7 +732,6 @@ public class Launcher extends Activity{
         }
     };
 
-    private boolean mBootComplete;
     private Intent mDelayedSourceChange;
     private BroadcastReceiver otherReceiver = new BroadcastReceiver(){
         @Override
@@ -744,19 +743,16 @@ public class Launcher extends Activity{
                 Intent i = new Intent(TvInputManager.ACTION_SETUP_INPUTS);
                 i.putExtra("from_cec_otp", true);
                 i.putExtra(TvInputInfo.EXTRA_INPUT_ID, intent.getStringExtra(TvInputInfo.EXTRA_INPUT_ID));
-                if (!mBootComplete) {
+                if (!isBootvideoStopped()) {
                     mDelayedSourceChange = i;
-                } else if (mActivityResumed && isBootvideoStopped()) {
+                    if (mActivityResumed) {
+                        mTvHandler.sendEmptyMessage(TV_MSG_BOOTUP_TO_TVAPP);
+                    }
+                } else if (mActivityResumed) {
                     Toast.makeText(Launcher.this, R.string.toast_otp_input_change, Toast.LENGTH_LONG).show();
                     startOtpSource(i);
                 } else {
                     Log.d(TAG," acitivity not resumed or bootvideo not finished, drop " + ACTION_OTP_INPUT_SOURCE_CHANGE);
-                }
-            } else if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
-                mBootComplete = true;
-                if (mDelayedSourceChange != null) {
-                    startOtpSource(mDelayedSourceChange);
-                    mDelayedSourceChange = null;
                 }
             }
         }
@@ -901,9 +897,10 @@ public class Launcher extends Activity{
 
     private boolean checkNeedStartTvApp(boolean close) {
         boolean ret = false;
-        if (TextUtils.equals(mSystemControlManager.getProperty("ro.vendor.platform.has.tvuimode"), "true") &&
+        if ((TextUtils.equals(mSystemControlManager.getProperty("ro.vendor.platform.has.tvuimode"), "true") &&
             !TextUtils.equals(mSystemControlManager.getProperty("tv.launcher.firsttime.launch"), "false") &&
-            Settings.System.getInt(getContentResolver(), "tv_start_up_enter_app", 0) > 0) {
+            Settings.System.getInt(getContentResolver(), "tv_start_up_enter_app", 0) > 0)
+            || mDelayedSourceChange != null) {
             Log.d(TAG, "starting tvapp...");
 
             ret = true;
@@ -1351,8 +1348,15 @@ public class Launcher extends Activity{
                 case TV_MSG_BOOTUP_TO_TVAPP:
                     if (isBootvideoStopped()) {
                         Log.d(TAG, "======== bootvideo is stopped, start tv app");
-                        startTvApp();
-                        finish();
+                        if (mDelayedSourceChange != null) {
+                            startOtpSource(mDelayedSourceChange);
+                            mDelayedSourceChange = null;
+                            Toast.makeText(Launcher.this, R.string.toast_otp_input_change, Toast.LENGTH_LONG).show();
+                            return;
+                        } else {
+                            startTvApp();
+                            finish();
+                        }
                     } else {
                         Log.d(TAG, "======== bootvideo is not stopped, wait it");
                         mTvHandler.sendEmptyMessageDelayed(TV_MSG_BOOTUP_TO_TVAPP, 50);
