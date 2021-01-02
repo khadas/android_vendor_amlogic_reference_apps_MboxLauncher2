@@ -1,0 +1,80 @@
+diff --git a/src/com/droidlogic/mboxlauncher/Launcher.java b/src/com/droidlogic/mboxlauncher/Launcher.java
+old mode 100644
+new mode 100755
+index 37c6a44..d3f5658
+--- a/src/com/droidlogic/mboxlauncher/Launcher.java
++++ b/src/com/droidlogic/mboxlauncher/Launcher.java
+@@ -204,15 +204,19 @@ public class Launcher extends Activity{
+     @Override
+     public void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
++		Log.d(TAG, "------onCreate111111111");
+         skipUserSetup();
++		Log.d(TAG, "------onCreate222222222222");
+         mTvInputManager = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+-
++		Log.d(TAG, "------onCreate3333333333333");
+         if (mTvInputManager == null) {
+             setContentView(R.layout.main_box);
++			Log.d(TAG, "------onCreate444444");
+         } else {
+             setContentView(R.layout.main);
++			Log.d(TAG, "------onCreate5555555555");
+         }
+-        Log.d(TAG, "------onCreate");
++        Log.d(TAG, "------onCreate666666");
+ 
+         mSystemControlManager = SystemControlManager.getInstance();
+         mMainFrameLayout = (FrameLayout) findViewById(R.id.layout_main);
+@@ -224,21 +228,23 @@ public class Launcher extends Activity{
+         if (needPreviewFeture()) {
+             mTvDataBaseManager = new TvDataBaseManager(this);
+         }
++		
++		 Log.d(TAG, "------onCreate777777777777777");
+ 
+         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+             COMPONENT_TV_APP = COMPONENT_LIVE_TV;
+         }
+ 
+         if (DesUtils.isAmlogicChip() == false) {
+-            finish();
++            //finish();
+         }
+-
++		 Log.d(TAG, "------onCreate888888888888");
+         mAppDataLoader = new AppDataLoader(this);
+         mStatusLoader = new StatusLoader(this);
+ 
+         mAppDataLoader.update();
+         initChildViews();
+-
++Log.d(TAG, "------onCreate9999");
+         IntentFilter filter = new IntentFilter();
+         filter.addAction(Intent.ACTION_MEDIA_EJECT);
+         filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+@@ -268,6 +274,7 @@ public class Launcher extends Activity{
+         filter = new IntentFilter();
+         filter.addAction("com.droidlogic.instaboot.RELOAD_APP_COMPLETED");
+         registerReceiver(instabootReceiver, filter);
++		Log.d(TAG, "------onCreate10");
+     }
+ 
+     public boolean isMboxFeture () {
+@@ -309,7 +316,7 @@ public class Launcher extends Activity{
+             mBlackFrameLayout.setVisibility(View.GONE);
+             mMainFrameLayout.setVisibility(View.VISIBLE);
+         }
+-
++Log.d(TAG, "------onResume222222222");
+         if (isMboxFeture()) {
+             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+         }
+@@ -334,6 +341,7 @@ public class Launcher extends Activity{
+         } else if (tvView != null) {
+             tvView.setVisibility(View.INVISIBLE);
+         }
++		Log.d(TAG, "------onResume33333333333");
+     }
+ 
+     @Override

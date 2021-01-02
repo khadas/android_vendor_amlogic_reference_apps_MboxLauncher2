@@ -233,7 +233,7 @@ public class Launcher extends Activity{
         }
 
         if (DesUtils.isAmlogicChip() == false) {
-            finish();
+            //finish();
         }
 
         mAppDataLoader = new AppDataLoader(this);
