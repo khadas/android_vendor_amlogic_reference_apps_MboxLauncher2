@@ -60,10 +60,10 @@ import android.widget.FrameLayout;
 
 import com.droidlogic.app.SystemControlManager;
 import com.droidlogic.app.DataProviderManager;
+import com.droidlogic.app.DroidLogicUtils;
 import com.droidlogic.app.tv.ChannelInfo;
 import com.droidlogic.app.tv.DroidLogicTvUtils;
 import com.droidlogic.app.tv.TvControlManager;
-import com.droidlogic.app.tv.TvControlDataManager;
 import com.droidlogic.app.tv.TvDataBaseManager;
 
 import java.util.List;
@@ -84,11 +84,11 @@ public class Launcher extends Activity{
 
     public static String COMPONENT_TV_SOURCE = "com.droidlogic.tv.settings/com.droidlogic.tv.settings.TvSourceActivity";
     public static String COMPONENT_TV_APP = "com.droidlogic.tvsource/com.droidlogic.tvsource.DroidLogicTv";
-    public static String COMPONENT_LIVE_TV = "com.android.tv/com.android.tv.TvActivity";
-    public static String COMPONENT_TV_SETTINGS = "com.android.tv.settings/com.android.tv.settings.MainSettings";
+    public static String COMPONENT_LIVE_TV = "com.droidlogic.android.tv/com.android.tv.TvActivity";
+    public static String COMPONENT_TV_SETTINGS = "com.android.tv.settings/com.android.tv.settings.more.MorePrefFragmentActivity";
     public static String DEFAULT_INPUT_ID = "com.droidlogic.tvinput/.services.ATVInputService/HW0";
 
-    public static final String PROP_TV_PREVIEW = "tv.is.preview.window";
+    public static final String PROP_TV_PREVIEW = "vendor.tv.is.preview.window";
     public static final String COMPONENT_THOMASROOM = "com.android.gl2jni";
     public static final String COMPONENT_TVSETTINGS = "com.android.tv.settings/com.android.tv.settings.MainSettings";
     public static final String DTVKIT_PACKAGE = "org.dtvkit.inputsource";
@@ -165,13 +165,13 @@ public class Launcher extends Activity{
     private static final int TV_PROMPT_NO_CHANNEL              = 6;
     private static final int TV_PROMPT_RADIO                   = 7;
     private static final int TV_PROMPT_TUNING                  = 8;
-    private static final int TV_WINDOW_WIDTH                   = 310;
-    private static final int TV_WINDOW_HEIGHT                  = 174;
-    private static final int TV_WINDOW_NORMAL_LEFT             = 120;
-    private static final int TV_WINDOW_NORMAL_TOP              = 197;
-    private static final int TV_WINDOW_RIGHT_LEFT              = 1279 - TV_WINDOW_WIDTH;
+    private static final int TV_WINDOW_WIDTH                   = 233;
+    private static final int TV_WINDOW_HEIGHT                  = 131;
+    private static final int TV_WINDOW_NORMAL_LEFT             = 90;
+    private static final int TV_WINDOW_NORMAL_TOP              = 147;
+    private static final int TV_WINDOW_RIGHT_LEFT              = 960 - TV_WINDOW_WIDTH;
     private static final int TV_WINDOW_TOP_TOP = 0;
-    private static final int TV_WINDOW_BOTTOM_TOP              = 719 - TV_WINDOW_HEIGHT;
+    private static final int TV_WINDOW_BOTTOM_TOP              = 540 - TV_WINDOW_HEIGHT;
     private static final int TV_MSG_PLAY_TV                    = 0;
     private static final int TV_MSG_BOOTUP_TO_TVAPP                = 1;
 
@@ -252,7 +252,7 @@ public class Launcher extends Activity{
     }
 
     public boolean needPreviewFeture () {
-        return isTvFeture() && DroidLogicTvUtils.needPreviewFeture(mSystemControlManager);
+        return isTvFeture() && mSystemControlManager.getPropertyBoolean("vendor.tv.need.preview_window", true);
     }
 
     private void releasePlayingTv() {
@@ -501,7 +501,8 @@ public class Launcher extends Activity{
         mLocalView.setType(TYPE_LOCAL);
 
         Intent intent = new Intent();
-        intent.setComponent(ComponentName.unflattenFromString(COMPONENT_TV_SETTINGS));
+        //intent.setComponent(ComponentName.unflattenFromString(COMPONENT_TV_SETTINGS));
+        intent.setComponent(ComponentName.unflattenFromString(COMPONENT_TVSETTINGS));
         mSettingsView.setType(TYPE_SETTINGS);
         mSettingsView.setIntent(intent);
     }
@@ -861,31 +862,7 @@ public class Launcher extends Activity{
 
     }
 
-    private boolean allowStartTvapp () {
-        if (!needPreviewFeture()) {
-            return true;
-        }
-
-        int state = TvControlDataManager.getInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.STATE_FREE);
-        int count =  TvControlDataManager.getInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_COUNT, 0);
-        if (state == DroidLogicTvUtils.STATE_SWITCHING_HOME) {
-            if (count == 0) {
-                TvControlDataManager.putInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.STATE_SWITCHING_TVAPP);
-            } else {;
-                return false;
-            }
-        } else {
-            TvControlDataManager.putInt(getContentResolver(), DroidLogicTvUtils.TV_SESSION_STATE, DroidLogicTvUtils.STATE_SWITCHING_TVAPP);
-        }
-
-        return true;
-    }
-
     public void startTvApp() {
-        if (!allowStartTvapp()) {
-            return;
-        }
-
         try {
             Intent intent = new Intent();
             intent.setComponent(ComponentName.unflattenFromString(COMPONENT_TV_APP));
@@ -897,16 +874,16 @@ public class Launcher extends Activity{
 
     private boolean checkNeedStartTvApp(boolean close) {
         boolean ret = false;
-        if ((TextUtils.equals(mSystemControlManager.getProperty("ro.vendor.platform.has.tvuimode"), "true") &&
-            !TextUtils.equals(mSystemControlManager.getProperty("tv.launcher.firsttime.launch"), "false") &&
-            Settings.System.getInt(getContentResolver(), "tv_start_up_enter_app", 0) > 0)
+        if ((DroidLogicUtils.isTv() &&
+            !TextUtils.equals(mSystemControlManager.getProperty("vendor.tv.launcher.firsttime.launch"), "false") &&
+            DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_START_UP_ENTER_APP, 0) > 0)
             || mDelayedSourceChange != null) {
             Log.d(TAG, "starting tvapp...");
 
             ret = true;
         }
         if (close) {
-            mSystemControlManager.setProperty("tv.launcher.firsttime.launch", "false");
+            mSystemControlManager.setProperty("vendor.tv.launcher.firsttime.launch", "false");
         }
 
         return ret;
@@ -1205,28 +1182,29 @@ public class Launcher extends Activity{
         ChannelInfo currentChannel = mTvDataBaseManager.getChannelInfo(channelUri);
         String currentSignalType = DroidLogicTvUtils.getCurrentSignalType(this) == DroidLogicTvUtils.SIGNAL_TYPE_ERROR
             ? TvContract.Channels.TYPE_ATSC_T : DroidLogicTvUtils.getCurrentSignalType(this);
+        Log.d(TAG, "channelid = " + channelId + "   [currentChannel] =" + currentChannel);
         if (currentChannel != null) {
-            if (TvContract.Channels.TYPE_OTHER.equals(currentChannel.getType())) {
-                if (TextUtils.equals(DroidLogicTvUtils.getSearchInputId(this), currentChannel.getInputId())) {
-                    isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
-                    mChannelUri = channelUri;
-                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
-                }
-            } else if (DroidLogicTvUtils.isAtscCountry(this)) {
-                if (currentChannel.getSignalType().equals(currentSignalType)) {
-                    isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
-                    mChannelUri = channelUri;
-                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
-                }
-            } else {
-                if (DroidLogicTvUtils.isATV(this) && currentChannel.isAnalogChannel()) {
-                    isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
-                    mChannelUri = channelUri;
-                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+            if (!TvContract.Channels.TYPE_OTHER.equals(currentChannel.getType())) {
+                if (DroidLogicTvUtils.isAtscCountry(this)) {
+                    if (currentChannel.getSignalType().equals(currentSignalType)) {
+                        isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
+                        mChannelUri = channelUri;
+                        setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                    }
+                } else if (DroidLogicTvUtils.isATV(this) && currentChannel.isAnalogChannel()) {
+                        isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
+                        mChannelUri = channelUri;
+                        setTvPrompt(TV_PROMPT_GOT_SIGNAL);
                 } else if (DroidLogicTvUtils.isDTV(this) && currentChannel.isDigitalChannel()) {
                     isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
                     mChannelUri = channelUri;
                     setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                } else {
+                    if (TextUtils.equals(DroidLogicTvUtils.getSearchInputId(this), currentChannel.getInputId())) {
+                        isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
+                        mChannelUri = channelUri;
+                        setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                    }
                 }
             }
         } else {
@@ -1289,7 +1267,7 @@ public class Launcher extends Activity{
             case TV_PROMPT_IS_SCRAMBLED:
                 tvPrompt.setText(getResources().getString(R.string.str_scrambeled));
                 if (isRadioChannel) {
-                    tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.bg_radio));
+                    tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.black));
                 }  else {
                     tvPrompt.setBackground(null);
                 }
@@ -1312,7 +1290,7 @@ public class Launcher extends Activity{
                 break;
             case TV_PROMPT_RADIO:
                 tvPrompt.setText(getResources().getString(R.string.str_audio_only));
-                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.bg_radio));
+                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.black));
                 break;
             case TV_PROMPT_TUNING:
                 tvPrompt.setText(null);
