@@ -138,7 +138,7 @@ public class StatusLoader {
     private int getWifiLevel(){
         NetworkInfo mWifi = mConnectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
 
-        if (mWifi.isConnected()) {
+        if (mWifi != null && mWifi.isConnected()) {
             WifiInfo mWifiInfo = mWifiManager.getConnectionInfo();
             int wifi_rssi = mWifiInfo.getRssi();
 
