@@ -289,10 +289,6 @@ public class Launcher extends Activity{
             mMainFrameLayout.setVisibility(View.VISIBLE);
         }
 
-        if (isMboxFeture()) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-        }
-
         if (isTvFeture()) {
             stopMusicPlayer();
         }
