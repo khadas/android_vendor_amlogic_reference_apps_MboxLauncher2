@@ -10,6 +10,7 @@ Description: java file
 package com.droidlogic.mboxlauncher;
 
 import android.app.SearchManager;
+import android.content.res.Configuration;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RemoteException;
@@ -21,6 +22,7 @@ import android.content.BroadcastReceiver;
 import android.content.pm.ActivityInfo;
 import android.content.ComponentName;
 import android.content.ContentProviderClient;
+import android.content.ContentUris;
 import android.database.ContentObserver;
 import android.app.Activity;
 import android.app.Instrumentation;
@@ -65,6 +67,7 @@ import com.droidlogic.app.tv.ChannelInfo;
 import com.droidlogic.app.tv.DroidLogicTvUtils;
 import com.droidlogic.app.tv.TvControlManager;
 import com.droidlogic.app.tv.TvDataBaseManager;
+import com.droidlogic.app.DataProviderManager;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -91,9 +94,13 @@ public class Launcher extends Activity{
     public static final String PROP_TV_PREVIEW = "vendor.tv.is.preview.window";
     public static final String COMPONENT_THOMASROOM = "com.android.gl2jni";
     public static final String COMPONENT_TVSETTINGS = "com.android.tv.settings/com.android.tv.settings.MainSettings";
-    public static final String DTVKIT_PACKAGE = "org.dtvkit.inputsource";
+    public static final String DTVKIT_PACKAGE = "com.droidlogic.dtvkit.inputsource";
     public static boolean isLaunchingTvSettings = false;
     public static boolean isLaunchingThomasroom = false;
+
+    public static final String EVENT_SIGNAL_SCRAMBLED_SERVICE = "signal_scrambled_service";
+    public static final String EVENT_SIGNAL_INVALID_SERVICE = "signal_invalid_service";
+    public static final String EVENT_SIGNAL_DATA_SERVICE = "signal_data_service";
 
     public static final int TYPE_VIDEO                           = 0;
     public static final int TYPE_RECOMMEND                       = 1;
@@ -117,6 +124,7 @@ public class Launcher extends Activity{
     private static final int MSG_REFRESH_SHORTCUT                = 0;
     private static final int MSG_RECOVER_HOME                    = 1;
     private static final int MSG_START_CUSTOM_SCREEN             = 2;
+    private static final int MSG_SET_HOVER_VIEW                  = 3;
     private static final int animDuration                        = 70;
     private static final int animDelay                           = 0;
 
@@ -165,13 +173,17 @@ public class Launcher extends Activity{
     private static final int TV_PROMPT_NO_CHANNEL              = 6;
     private static final int TV_PROMPT_RADIO                   = 7;
     private static final int TV_PROMPT_TUNING                  = 8;
-    private static final int TV_WINDOW_WIDTH                   = 233;
-    private static final int TV_WINDOW_HEIGHT                  = 131;
-    private static final int TV_WINDOW_NORMAL_LEFT             = 90;
-    private static final int TV_WINDOW_NORMAL_TOP              = 147;
-    private static final int TV_WINDOW_RIGHT_LEFT              = 960 - TV_WINDOW_WIDTH;
+    private static final int TV_PROMPT_IS_DATA_SERVICE         = 9;
+    private static final int TV_PROMPT_IS_SKIP                 = 10;
+    private static final int TV_PROMPT_IS_DELETE               = 11;
+    private static final int TV_PROMPT_IS_INVALID_SERVICE      = 12;
+    private static final int TV_WINDOW_WIDTH                   = 296;
+    private static final int TV_WINDOW_HEIGHT                  = 176;
+    private static final int TV_WINDOW_NORMAL_LEFT             = 130;
+    private static final int TV_WINDOW_NORMAL_TOP              = 196;
+    private static final int TV_WINDOW_RIGHT_LEFT              = 1230 - TV_WINDOW_WIDTH;
     private static final int TV_WINDOW_TOP_TOP = 0;
-    private static final int TV_WINDOW_BOTTOM_TOP              = 540 - TV_WINDOW_HEIGHT;
+    private static final int TV_WINDOW_BOTTOM_TOP              = 690 - TV_WINDOW_HEIGHT;
     private static final int TV_MSG_PLAY_TV                    = 0;
     private static final int TV_MSG_BOOTUP_TO_TVAPP                = 1;
 
@@ -203,6 +215,8 @@ public class Launcher extends Activity{
     private boolean mTvStartPlaying = false;
     private boolean resumeFromTVSource = false;
     private boolean mActivityResumed;
+    private boolean mSyncChannelUri = false;
+    private boolean mIsPortraitMode = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -211,12 +225,14 @@ public class Launcher extends Activity{
         mTvInputManager = (TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
 
         if (mTvInputManager == null) {
+            Log.d(TAG, "------onCreate mbox");
             setContentView(R.layout.main_box);
         } else {
+            Log.d(TAG, "------onCreate tv");
             setContentView(R.layout.main);
         }
-        Log.d(TAG, "------onCreate");
 
+        mIsPortraitMode = getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT;
         mSystemControlManager = SystemControlManager.getInstance();
         mMainFrameLayout = (FrameLayout) findViewById(R.id.layout_main);
         mBlackFrameLayout = (FrameLayout) findViewById(R.id.layout_black);
@@ -252,7 +268,7 @@ public class Launcher extends Activity{
     }
 
     public boolean needPreviewFeture () {
-        return isTvFeture() && mSystemControlManager.getPropertyBoolean("vendor.tv.need.preview_window", true);
+        return isTvFeture() && mSystemControlManager.getPropertyBoolean("vendor.tv.need.droidlogic.preview_window", false);
     }
 
     private void releasePlayingTv() {
@@ -274,7 +290,6 @@ public class Launcher extends Activity{
         super.onResume();
         Log.d(TAG, "------onResume");
 
-        mActivityResumed = true;
         if (resumeFromTVSource) {
             //launcher will start tvapp, don't do anything
             resumeFromTVSource = false;
@@ -310,6 +325,7 @@ public class Launcher extends Activity{
         } else if (tvView != null) {
             tvView.setVisibility(View.INVISIBLE);
         }
+        mActivityResumed = true;
     }
 
     @Override
@@ -662,6 +678,9 @@ public class Launcher extends Activity{
                     View CustomView=(View)msg.obj;
                     CustomScreen(CustomView);
                     break;
+                case MSG_SET_HOVER_VIEW:
+                    getHoverView().setHover((MyRelativeLayout)(msg.obj));
+                    break;
                 default:
                     break;
             }
@@ -720,6 +739,7 @@ public class Launcher extends Activity{
             // TODO Auto-generated method stub
 
             final String action = intent.getAction();
+            Log.d(TAG,"appReceiver receive " + action);
             if (Intent.ACTION_PACKAGE_CHANGED.equals(action)
                     || Intent.ACTION_PACKAGE_REMOVED.equals(action)
                     || Intent.ACTION_PACKAGE_ADDED.equals(action)) {
@@ -750,6 +770,14 @@ public class Launcher extends Activity{
                     startOtpSource(i);
                 } else {
                     Log.d(TAG," acitivity not resumed or bootvideo not finished, drop " + ACTION_OTP_INPUT_SOURCE_CHANGE);
+                }
+            } else if(action.equals("android.intent.action.BOOT_COMPLETED")) {
+                if (needPreviewFeture() && mTvDataBaseManager != null) {
+                    ChannelInfo currentChannel = mTvDataBaseManager.getChannelInfo(mChannelUri);
+                    if (mChannelUri == null || (DroidLogicTvUtils.matchsWhich(mChannelUri) == 2 && currentChannel == null)) {
+                        Log.d(TAG,"Switch channels if you haven't switched channels before");
+                        mTvHandler.sendEmptyMessage(TV_MSG_PLAY_TV);
+                    }
                 }
             }
         }
@@ -785,6 +813,7 @@ public class Launcher extends Activity{
 
         filter = new IntentFilter();
         filter.addAction(ACTION_OTP_INPUT_SOURCE_CHANGE);
+        filter.addAction("android.intent.action.BOOT_COMPLETED");
         filter.addAction(Intent.ACTION_BOOT_COMPLETED);
         registerReceiver(otherReceiver, filter);
 
@@ -924,6 +953,18 @@ public class Launcher extends Activity{
         getMainView().requestFocus();
     }
 
+    public void setHoverView(MyRelativeLayout view) {
+        mHandler.removeMessages(MSG_SET_HOVER_VIEW);
+        getHoverView().setHover(view);
+    }
+    public void setHoverViewDelayed(MyRelativeLayout view, long time) {
+        mHandler.removeMessages(MSG_SET_HOVER_VIEW);
+        Message msg = new Message();
+        msg.what = MSG_SET_HOVER_VIEW;
+        msg.obj = view;
+        mHandler.sendMessageDelayed(msg, time);
+    }
+
     public static int pxToDip(Context context, float pxValue) {
         final float scale = context.getResources().getDisplayMetrics().density;
         return (int) (pxValue / scale + 0.5f);
@@ -994,6 +1035,13 @@ public class Launcher extends Activity{
                 duration = 0;
                 break;
         }
+        if (mIsPortraitMode) {
+            left = left / 2;
+            top = top / 2;
+            right = right / 2;
+            bottom = bottom / 2;
+            tvPrompt.setTextSize(15);
+        }
         HoverView.setViewPosition(tvView, new Rect(left, top, right, bottom));
         HoverView.setViewPosition(tvPrompt, new Rect(left, top, right, bottom));
 
@@ -1024,6 +1072,14 @@ public class Launcher extends Activity{
         return DataProviderManager.getBooleanValue(this, DroidLogicTvUtils.TV_CURRENT_CHANNELBLOCK_STATUS, false);
     }
 
+    private String getDtvKitSystem() {
+        return DataProviderManager.getStringValue(this, "tv_dtvkit_system", "");
+    }
+
+    private boolean isChannelSearch() {
+        return DataProviderManager.getBooleanValue(Launcher.this, "is_channel_searching", false);
+    }
+
     public void setCurrentChannelBlocked(boolean blocked){
         DataProviderManager.putBooleanValue(this, DroidLogicTvUtils.TV_CURRENT_BLOCK_STATUS, blocked);
     }
@@ -1033,7 +1089,7 @@ public class Launcher extends Activity{
     }
 
     private boolean isTunerSource (String inputId) {
-        return !TextUtils.isEmpty(inputId) && inputId.contains("ADTV");
+        return !mTvInputManager.getTvInputInfo(inputId).isPassthroughInput();
     }
 
     private void tuneTvView() {
@@ -1055,9 +1111,9 @@ public class Launcher extends Activity{
 
         int device_id;
         long channel_id;
-        device_id = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
-        channel_id = Settings.System.getLong(getContentResolver(), DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1);
-        isRadioChannel = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_CHANNEL_IS_RADIO, 0) == 1 ? true : false;
+        device_id = DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
+        channel_id = DataProviderManager.getLongValue(Launcher.this, DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1);
+        isRadioChannel = DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_CURRENT_CHANNEL_IS_RADIO, 0) == 1 ? true : false;
         Log.d(TAG, "TV get device_id=" + device_id + " dtv=" + channel_id );
 
         List<TvInputInfo> input_list = mTvInputManager.getTvInputList();
@@ -1081,16 +1137,23 @@ public class Launcher extends Activity{
             //mTvInputId = DEFAULT_INPUT_ID;
             //mChannelUri = TvContract.buildChannelUri(-1);
         } else {
-            if (isTunerSource(mTvInputId)) {
+            if (isTunerSource(inputid)) {
                 setChannelUri(channel_id);
             } else {
                 mChannelUri = TvContract.buildChannelUriForPassthroughInput(mTvInputId);
             }
         }
 
+        mChannelUri = mIsPortraitMode ? null : mChannelUri;
         Log.d(TAG, "TV play tune inputId=" + mTvInputId + " uri=" + mChannelUri);
-        if (mChannelUri != null && (DroidLogicTvUtils.getChannelId(mChannelUri) > 0
-                || (currentInfo != null && currentInfo.isPassthroughInput()))) {
+        ChannelInfo currentChannel = mTvDataBaseManager.getChannelInfo(mChannelUri);
+        if (mChannelUri != null
+                && ((DroidLogicTvUtils.getChannelId(mChannelUri) > 0
+                    && currentChannel != null
+                    && !currentChannel.isLocked()
+                    && currentChannel.getSetHidden() == 0
+                    && currentChannel.getSetDelete() == 0)
+                    || (currentInfo != null && currentInfo.isPassthroughInput()))) {
             tvView.tune(mTvInputId, mChannelUri);
         }
 
@@ -1101,7 +1164,16 @@ public class Launcher extends Activity{
                 if (isCurrentChannelBlocked() && !current.getInputId().startsWith(DTVKIT_PACKAGE)) {
                     Log.d(TAG, "current channel is blocked");
                     setTvPrompt(TV_PROMPT_BLOCKED);
-                } else {
+                } else if (current.isLocked()) {
+                    Log.d(TAG, "current channel is locked");
+                    setTvPrompt(TV_PROMPT_BLOCKED);
+                } else if (current.getSetDelete() == 1) {
+                    Log.d(TAG, "current channel is delete");
+                    setTvPrompt(TV_PROMPT_NO_CHANNEL);
+                } else if (current.getSetHidden() == 1) {
+                    Log.d(TAG, "current channel is hide");
+                    setTvPrompt(TV_PROMPT_IS_SKIP);
+                }  else {
                     setTvPrompt(TV_PROMPT_TUNING);
                     Log.d(TAG, "TV play tune continue as no channel blocks");
                 }
@@ -1181,7 +1253,11 @@ public class Launcher extends Activity{
         Log.d(TAG, "channelid = " + channelId + "   [currentChannel] =" + currentChannel);
         if (currentChannel != null) {
             if (!TvContract.Channels.TYPE_OTHER.equals(currentChannel.getType())) {
-                if (DroidLogicTvUtils.isAtscCountry(this)) {
+                if (mTvInputId.startsWith(DTVKIT_PACKAGE) && currentChannel.isDigitalChannel()) {
+                    isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
+                    mChannelUri = channelUri;
+                    setTvPrompt(TV_PROMPT_GOT_SIGNAL);
+                } else if (DroidLogicTvUtils.isAtscCountry(this)) {
                     if (currentChannel.getSignalType().equals(currentSignalType)) {
                         isRadioChannel = ChannelInfo.isRadioChannel(currentChannel);
                         mChannelUri = channelUri;
@@ -1206,6 +1282,10 @@ public class Launcher extends Activity{
         } else {
             ArrayList<ChannelInfo> channelList =  mTvDataBaseManager.getChannelList(mTvInputId, ChannelInfo.COMMON_PROJECTION, null, null);
             if (channelList != null && channelList.size() > 0) {
+                String currentDtvKitSystem = "";
+                if (mTvInputId.startsWith(DTVKIT_PACKAGE)) {
+                    currentDtvKitSystem = getDtvKitSystem();
+                }
                 for (int i = 0; i < channelList.size(); i++) {
                     ChannelInfo channel = channelList.get(i);
                     if (TvContract.Channels.TYPE_OTHER.equals(channel.getType())) {
@@ -1214,7 +1294,11 @@ public class Launcher extends Activity{
                             Log.d(TAG, "current other type channel not exisit, find a new channel instead: " + mChannelUri);
                             return;
                         }
-                     } else if (DroidLogicTvUtils.isAtscCountry(this)) {
+                    } else if (mTvInputId.startsWith(DTVKIT_PACKAGE) && channel.isDigitalChannel() && dtvkitChannelsMatchSystem(channel.getType(),  currentDtvKitSystem)) {
+                            mChannelUri = channel.getUri();
+                            Log.d(TAG, "current channel not exisit, find a new dtvKit channel instead: " + mChannelUri);
+                            return;
+                    } else if (DroidLogicTvUtils.isAtscCountry(this)) {
                         if (channel.getSignalType().equals(currentSignalType)) {
                             mChannelUri = channel.getUri();
                             Log.d(TAG, "current channel not exisit, find a new channel instead: " + mChannelUri);
@@ -1236,6 +1320,54 @@ public class Launcher extends Activity{
                 mChannelUri = TvContract.buildChannelUri(-1);
             }
         }
+    }
+
+    public static boolean dtvkitChannelsMatchSystem(String channelType, String dvbSystem) {
+        boolean ret = false;
+        if (TextUtils.isEmpty(dvbSystem)) {
+            ret = true;
+        } else {
+            switch (dvbSystem) {
+                case "DVB-T": {
+                    if (TvContract.Channels.TYPE_DVB_T.equals(channelType)
+                            || TvContract.Channels.TYPE_DVB_T2.equals(channelType)) {
+                        ret = true;
+                    }
+                    break;
+                }
+                case "DVB-C": {
+                    if (TvContract.Channels.TYPE_DVB_C.equals(channelType)
+                            || TvContract.Channels.TYPE_DVB_C2.equals(channelType)) {
+                        ret = true;
+                    }
+                    break;
+                }
+                case "DVB-S": {
+                    if (TvContract.Channels.TYPE_DVB_S.equals(channelType)
+                            || TvContract.Channels.TYPE_DVB_S2.equals(channelType)
+                            || TvContract.Channels.TYPE_DVB_SH.equals(channelType)) {
+                        ret = true;
+                    }
+                    break;
+                }
+                case "ISDB-T": {
+                    if (TvContract.Channels.TYPE_ISDB_T.equals(channelType)
+                            || TvContract.Channels.TYPE_ISDB_TB.equals(channelType)) {
+                        ret = true;
+                    }
+                    break;
+                }
+                case "ANALOG": {
+                    if (TvContract.Channels.TYPE_PAL.equals(channelType)
+                            || TvContract.Channels.TYPE_SECAM.equals(channelType)
+                            || TvContract.Channels.TYPE_NTSC.equals(channelType)) {
+                        ret = true;
+                    }
+                    break;
+                }
+            }
+        }
+        return ret;
     }
 
     //private int currentTvPromptMode = TV_PROMPT_GOT_SIGNAL;
@@ -1292,6 +1424,22 @@ public class Launcher extends Activity{
                 tvPrompt.setText(null);
                 tvPrompt.setBackground(getResources().getDrawable(R.drawable.black));
                 break;
+            case TV_PROMPT_IS_DATA_SERVICE:
+                tvPrompt.setText(getResources().getString(R.string.str_data_service));
+                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.black));
+                break;
+            case TV_PROMPT_IS_INVALID_SERVICE:
+                tvPrompt.setText(getResources().getString(R.string.str_invalid_service));
+                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.black));
+                break;
+            case TV_PROMPT_IS_SKIP:
+                tvPrompt.setText(getResources().getString(R.string.str_channel_skip));
+                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.black));
+                break;
+            case TV_PROMPT_IS_DELETE:
+                tvPrompt.setText(getResources().getString(R.string.str_channel_delete));
+                tvPrompt.setBackgroundDrawable(getResources().getDrawable(R.drawable.black));
+                break;
         }
     }
 
@@ -1309,8 +1457,11 @@ public class Launcher extends Activity{
                 case TV_MSG_PLAY_TV:
                     if (isBootvideoStopped()) {
                         Log.d(TAG, "======== bootvideo is stopped, and tvapp released, start tv play");
-                        if (initChannelWhenChannelReady()) {
+                        if (initChannelWhenChannelReady() && !isChannelSearch()) {
                             tuneTvView();
+                        } else if (isChannelSearch()){
+                            Log.d(TAG, "======== Channel search has not been completed, waiting");
+                            mTvHandler.sendEmptyMessageDelayed(TV_MSG_PLAY_TV, 1000);
                         } else {
                             Log.d(TAG, "======== screen blocked and no need start tv play");
                         }
@@ -1348,13 +1499,29 @@ public class Launcher extends Activity{
             Log.d(TAG, "====onEvent==inputId =" + inputId +", ===eventType ="+ eventType);
             if (eventType.equals(DroidLogicTvUtils.AV_SIG_SCRAMBLED)) {
                 setTvPrompt(TV_PROMPT_IS_SCRAMBLED);
+            } else if (eventType.equals(DroidLogicTvUtils.EVENT_CHANNEL_LIST_UPDATED)) {
+                if (eventArgs == null) {
+                    return;
+                }
+                Uri channelUri = eventArgs.getParcelable("channelUri");
+                if (channelUri != null) {
+                    mChannelUri = channelUri;
+                    tvView.tune(mTvInputId, mChannelUri);
+                    Log.i(TAG, "onEvent: tune to new " + channelUri);
+                }
+            } else if (eventType.equals(EVENT_SIGNAL_SCRAMBLED_SERVICE)) {
+                setTvPrompt(TV_PROMPT_IS_SCRAMBLED);
+            } else if (eventType.equals(EVENT_SIGNAL_INVALID_SERVICE)) {
+                setTvPrompt(TV_PROMPT_IS_INVALID_SERVICE);
+            } else if (eventType.equals(EVENT_SIGNAL_DATA_SERVICE)) {
+                setTvPrompt(TV_PROMPT_IS_DATA_SERVICE);
             }
         }
 
         @Override
         public void onVideoAvailable(String inputId) {
             //tvView.invalidate();
-            int device_id = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
+            int device_id = DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
             if (device_id == DroidLogicTvUtils.DEVICE_ID_AV1 || device_id == DroidLogicTvUtils.DEVICE_ID_AV2) {
                 isAvNoSignal = false;
             }
@@ -1399,7 +1566,7 @@ public class Launcher extends Activity{
                 default:
                     break;
             }
-            int device_id = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
+            int device_id = DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
             if (device_id == DroidLogicTvUtils.DEVICE_ID_SPDIF) {
                 setTvPrompt(TV_PROMPT_SPDIF);
             } else if (device_id == DroidLogicTvUtils.DEVICE_ID_AV1 || device_id == DroidLogicTvUtils.DEVICE_ID_AV2) {
@@ -1408,7 +1575,13 @@ public class Launcher extends Activity{
             } else if (reason != TvInputManager.VIDEO_UNAVAILABLE_REASON_AUDIO_ONLY &&
                     reason != TvInputManager.VIDEO_UNAVAILABLE_REASON_TUNING) {
                 if (!TextUtils.equals(mChannelUri.toString(), TvContract.buildChannelUri(-1).toString())) {
-                    setTvPrompt(TV_PROMPT_NO_SIGNAL);
+                    ChannelInfo currentChannel = mTvDataBaseManager.getChannelInfo(mChannelUri);
+                    Log.i(TAG,"====onVideoUnavailable===" + currentChannel);
+                    if (currentChannel != null && currentChannel.isData()) {
+                        setTvPrompt(TV_PROMPT_IS_DATA_SERVICE);
+                    } else {
+                        setTvPrompt(TV_PROMPT_NO_SIGNAL);
+                    }
                     if (inputId != null && inputId.startsWith(DTVKIT_PACKAGE)) {
                         tvView.setStreamVolume(0);
                     }
@@ -1427,7 +1600,7 @@ public class Launcher extends Activity{
         public void onContentBlocked(String inputId, TvContentRating rating) {
             Log.d(TAG, "====onContentBlocked");
             setCurrentChannelBlocked(true);
-            int device_id = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
+            int device_id = DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
             isChannelBlocked = true;
             if (isAvNoSignal && (device_id == DroidLogicTvUtils.DEVICE_ID_AV1 || device_id == DroidLogicTvUtils.DEVICE_ID_AV2)) {
                 setTvPrompt(TV_PROMPT_NO_SIGNAL);
@@ -1441,7 +1614,7 @@ public class Launcher extends Activity{
         public void onContentAllowed(String inputId) {
             Log.d(TAG, "====onContentAllowed ");
             setCurrentChannelBlocked(false);
-            int device_id = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
+            int device_id = DataProviderManager.getIntValue(Launcher.this, DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
             if (device_id == DroidLogicTvUtils.DEVICE_ID_AV1 || device_id == DroidLogicTvUtils.DEVICE_ID_AV2) {
                 isAvNoSignal = false;
             }
@@ -1509,14 +1682,19 @@ public class Launcher extends Activity{
         @Override
         public void onChange(boolean selfChange, Uri uri) {
             Log.d(TAG, "detect channel changed =" + uri);
-            /*if (DroidLogicTvUtils.matchsWhich(mChannelUri) == DroidLogicTvUtils.NO_MATCH) {
+            if (!mSyncChannelUri && (mChannelUri == null || DroidLogicTvUtils.matchsWhich(mChannelUri)
+                    == DroidLogicTvUtils.NO_MATCH)) {
                 ChannelInfo changedChannel = mTvDataBaseManager.getChannelInfo(uri);
-                if (TextUtils.equals(changedChannel.getInputId(), mTvInputId)) {
-                    Log.d(TAG, "current channel is null, so tune to a new channel");
-                    mChannelUri = uri;
-                    tvView.tune(mTvInputId, mChannelUri);
+                Log.d(TAG, "changedChannel :" + changedChannel);
+                if (changedChannel != null) {
+                    if (TextUtils.equals(changedChannel.getInputId(), mTvInputId)) {
+                        Log.d(TAG, "current channel is null, so tune to a new channel");
+                        //mChannelUri = ContentUris.withAppendedId(uri, 1);
+                        tvView.tune(mTvInputId, mChannelUri);
+                        mSyncChannelUri = true;
+                    }
                 }
-            }*/
+            }
         }
     }
 
@@ -1565,7 +1743,7 @@ public class Launcher extends Activity{
 
     //getPrimaryLanguage
     private int getPrimaryLanguage(Context context) {
-        return Settings.System.getInt(context.getContentResolver(), "primary_audio_lang", getSystemLang());
+        return DataProviderManager.getIntValue(context, "primary_audio_lang", getSystemLang());
     }
 
     //getSystemLang
@@ -1611,12 +1789,13 @@ public class Launcher extends Activity{
 
     private boolean initChannelWhenChannelReady() {
         boolean result = false;
-        long channelId = Settings.System.getLong(getContentResolver(), DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1);
-        int deviceId = Settings.System.getInt(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
+        long channelId = DataProviderManager.getLongValue(Launcher.this, DroidLogicTvUtils.TV_DTV_CHANNEL_INDEX, -1);
+        //int deviceId = DataProviderManager.getIntValue(getContentResolver(), DroidLogicTvUtils.TV_CURRENT_DEVICE_ID, 0);
         if (channelId != -1) {
             Uri channelUri = TvContract.buildChannelUri(channelId);
             ChannelInfo currentChannel = mTvDataBaseManager.getChannelInfo(channelUri);
-            if (isTunerSource(deviceId) && currentChannel != null
+            String inputid = DroidLogicTvUtils.getCurrentInputId(this);
+            if (isTunerSource(inputid) && currentChannel != null
                     && currentChannel.isLocked() && mTvInputManager.isParentalControlsEnabled()) {
                 isChannelBlocked = true;
             } else {

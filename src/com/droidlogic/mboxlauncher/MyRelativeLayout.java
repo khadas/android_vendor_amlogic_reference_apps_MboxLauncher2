@@ -47,6 +47,7 @@ public class MyRelativeLayout extends RelativeLayout implements OnGlobalLayoutLi
     private final static float SCALE_PARA_BIG = 1.1f;
     private final static float SHADOW_SMALL = 0.9f;
     private final static float SHADOW_BIG = 1.0f;
+    private final static long DELAYED_TIME_HOVER_VIEW = 100;
     private float mScale;
     private float mElevation;
     private float mShadowScale;
@@ -99,7 +100,7 @@ public class MyRelativeLayout extends RelativeLayout implements OnGlobalLayoutLi
     public  void onGlobalLayout () {
         layoutCompleted = true;
         if (isFocused()) {
-            setHoverView();
+            setHoverViewDelayed();
         }
         getViewTreeObserver().removeGlobalOnLayoutListener(this);
     }
@@ -300,7 +301,11 @@ public class MyRelativeLayout extends RelativeLayout implements OnGlobalLayoutLi
     }
 
     private void setHoverView(){
-        ((Launcher)mContext).getHoverView().setHover(this);
+        ((Launcher)mContext).setHoverView(this);
+    }
+
+    private void setHoverViewDelayed(){
+        ((Launcher)mContext).setHoverViewDelayed(this, DELAYED_TIME_HOVER_VIEW);
     }
 
     public void setNumber(int number) {

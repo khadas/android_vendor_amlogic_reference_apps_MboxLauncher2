@@ -29,6 +29,10 @@
     <string name="str_audio_only">Audio Only</string>
     <string name="str_scrambeled">Scrambled</string>
     <string name="str_blocked">Program is blocked</string>
+    <string name="str_data_service">Data Service</string>
+    <string name="str_channel_skip">Hidden Program</string>
+    <string name="str_channel_delete">Deleted Channel</string>
+    <string name="str_invalid_service">Invalid Service</string>
     <string name="toast_livetv_warn">LiveTv is releasing, please wait</string>
     <string name="toast_otp_input_change">TV has received request to switch source</string>
 </resources>
