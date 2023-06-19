@@ -43,7 +43,7 @@
             android:name=".Launcher"
             android:launchMode="singleTask"
             android:clearTaskOnLaunch="true"
-            android:exported="false"
+            android:exported="true"
             android:stateNotNeeded="true">
             <intent-filter >
                 <action android:name="android.intent.action.MAIN" />
