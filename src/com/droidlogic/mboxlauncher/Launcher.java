@@ -793,7 +793,7 @@ public class Launcher extends Activity{
         filter.addAction (DROIDVOLD_MEDIA_MOUNTED_ACTION);
         filter.addAction (DROIDVOLD_MEDIA_EJECT_ACTION);
         filter.addDataScheme("file");
-        registerReceiver(mediaReceiver, filter);
+        registerReceiver(mediaReceiver, filter, RECEIVER_EXPORTED);
 
         filter = new IntentFilter();
         filter.addAction(net_change_action);
@@ -803,19 +803,19 @@ public class Launcher extends Activity{
         filter.addAction(outputmode_change_action);
         filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE);
         filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE);
-        registerReceiver(netReceiver, filter);
+        registerReceiver(netReceiver, filter, RECEIVER_EXPORTED);
 
         filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
         filter.addAction(Intent.ACTION_PACKAGE_CHANGED);
         filter.addDataScheme("package");
-        registerReceiver(appReceiver, filter);
+        registerReceiver(appReceiver, filter, RECEIVER_EXPORTED);
 
         filter = new IntentFilter();
         filter.addAction(ACTION_OTP_INPUT_SOURCE_CHANGE);
         filter.addAction("android.intent.action.BOOT_COMPLETED");
         filter.addAction(Intent.ACTION_BOOT_COMPLETED);
-        registerReceiver(otherReceiver, filter);
+        registerReceiver(otherReceiver, filter, RECEIVER_EXPORTED);
 
         mBroadcastsRegistered = true;
     }
