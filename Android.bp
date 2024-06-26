@@ -12,13 +12,15 @@ android_app {
     platform_apis: true,
     srcs: ["src/**/*.java"],
 
-    libs: [
+    static_libs: [
         "droidlogic.software.core",
         "droidlogic.tv.software.core",
     ],
-    uses_libs: [
-        "droidlogic.software.core",
+
+    required: [
+        "com.droidlogic.mboxlauncher.xml",
         "droidlogic.tv.software.core",
+        "droidlogic.software.core"
     ],
 
     privileged: true,
@@ -34,7 +36,6 @@ android_app {
     },
 
     certificate: "platform",
-    required: ["com.droidlogic.mboxlauncher.xml"],
 
 }
 
